@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>
+            HomeWork3
+        </title>
+        <style>
+            body {
+                margin: 0px;
+                font-family: sans-serif;
+            }
+            h1 {
+                color: white;
+                background-color: black;
+                font-style: normal;
+                margin: 0;
+                padding: 10px;
+            }
+            body > div {
+                margin: 20px;
+            }
+            #countryList {
+                list-style: none;
+                width: 200px;
+                float: left;
+                  
+            }
+            #graph {
+                float: left;
+            }
+        </style>
+
+    </head>
+    <body>
+        <h1>
+            Gapminder - Wealth and Health of Nations
+        </h1>
+        <div>
+            <h2>
+                Countries
+            </h2>
+            <hr>
+            <div>
+            <div id = "countryList">
+            </div>
+            <svg id = "graph" height = "620" width = "820">
+                <rect  height="620" width="820" fill="none"
+                      >
+                </rect>
+                <g id = "dots">
+                </g>
+            </svg>
+
+            </div>
+        </div>
+    </body>
+    <script src="https://d3js.org/d3.v3.min.js" charset="utf-8">
+     </script>
+    <script >
+         d3.json("https://raw.githubusercontent.com/CristianFelix/infoviz/master/Week%203/newData.json", function(e, d){
+            if (e) {
+                console.log(e);
+            } else {
+                var filteredData = d.filter((one)=> one.income[2008] != undefined && one.lifeExpectancy[2008] != undefined && one.population[2008] != undefined);
+                
+                drawList(filteredData, d3.select("#countryList"));
+                drawDots(filteredData, d3.select("#dots"));
+            }
+        });
+        
+        function drawDots(data, dots) {
+            
+            var xScale = d3.scale.linear().range([0,800]).domain(d3.extent(data, (one) => one.income[2008]));
+            var yScale = d3.scale.linear().range([600,0]).domain(d3.extent(data, (one) => one.lifeExpectancy[2008]));
+            var sScale = d3.scale.linear().range([6,18]).domain(d3.extent(data, (one) => one.population[2008]));
+            var colorScale = d3.scale.category10();
+            
+            dots.attr("transform", "translate(10,10)");
+                dots.selectAll("circle")
+                .data(data)
+                .enter()
+                .append("circle")
+                .attr("cx", (one, index) => xScale(one.income[2008]))
+                .attr("cy", (one, index) => yScale(one.lifeExpectancy[2008]))
+                .attr("r", (one, index) => sScale(one.population[2008]))
+                .attr("fill", (one, index) => colorScale(one.region))
+                .attr("opacity", 0.8);
+        }
+        
+        function drawList(data, list) {
+             list.selectAll("li")
+                .data(data)
+                .enter()
+                .append("li")
+                .text(function(obj){return obj.name;});
+        }
+        
+        
+        
+    </script>
+
+
+</html>
