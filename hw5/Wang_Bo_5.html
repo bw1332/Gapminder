@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>
+            HomeWork5
+        </title>
+        <style>
+            body {
+                margin: 0px;
+                font-family: sans-serif;
+            }
+            h1 {
+                color: white;
+                background-color: black;
+                font-style: normal;
+                margin: 0;
+                padding: 10px;
+            }
+            body > div {
+                margin: 20px;
+            }
+            #countryList {
+                list-style: none;
+                min-height: 500px;
+                width: 200px;
+                float: left;
+                  
+            }
+            #chart {
+                float: left;
+            }
+           
+            .domain {
+                fill: none;
+                stroke: #000;
+            }
+            .tick {
+                font-size: 10px;
+            }
+            .tick line {
+                stroke: #ccc;
+            }
+            #tooltip {
+                position: absolute;
+                background-color: rgba(255,255,255,0.8);
+                padding: 5px;
+                border: solid 1px black;
+                visibility: hidden;
+                transition: all 0.3s;
+            }
+        </style>
+
+    </head>
+    <body>
+        <h1>
+            Gapminder - Wealth and Health of Nations
+        </h1>
+        <div>
+            <h2>
+                Countries
+            </h2>
+            <hr>
+            <div>
+            <div id = "countryList">
+            </div >
+            
+            <svg id = "chart" height = "400" width = "600"></svg>
+            <input id="yearSlector" type = "range" min = "1900" max="2009" value="2008" onchange = "setYear(this.value)" style = "width:600px">
+                
+            </div>
+            <div id = "tooltip">tip</div>
+            </div>
+    
+    </body>
+    <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script>
+        var year = 2008;    
+        var chartWidth = 600;
+        var chartHeight = 400;
+        var chartMargin = {top: 10, left: 20, right:20, bottom: 20};
+        var innerChartWidth = chartWidth - chartMargin.left - chartMargin.right;
+        var innerChartHeight = chartHeight - chartMargin.top - chartMargin.bottom;
+        var chart = d3.select("#chart").append("g");
+        var list = d3.select("#countryList");
+        
+        var xAxisGroup = chart.append("g").attr("transform", "translate(" 
+                            + chartMargin.left 
+                            + ","
+                            + (innerChartHeight + chartMargin.top)
+                            +")");
+            
+        var yAxisGroup = chart.append("g").attr("transform", "translate(" 
+                            + chartMargin.left 
+                            + ","
+                            + chartMargin.top
+                            +")");
+        
+       
+        var yearLable = chart.append("text").text(year)
+        .style({"font-size" : 50, fill: "#CCC"}).attr("dx",50).attr("dy",70);
+        
+        var rowData;
+        
+         d3.json("https://raw.githubusercontent.com/CristianFelix/infoviz/master/Week%203/newData.json", function(e, d){
+            if (e) {
+                console.log(e);
+            } else {
+                rowData = d;
+                setYear(year);
+            }
+        });
+        
+        function drawChart(data) {
+            var xScale = d3.scale.linear()
+                        .range([0,innerChartWidth])
+                        .domain([ -1000, d3.max(data, function(one) {return one.income[year]})]);
+            
+            var yScale = d3.scale.linear().range([innerChartHeight,0]).domain(d3.extent(data, function(one) {return one.lifeExpectancy[year]}));
+            
+            var sScale = d3.scale.linear().range([20,1000]).domain(d3.extent(data, function(one){ return one.population[year]}));
+            var colorScale = d3.scale.category10();
+         
+            
+            var xAxis = d3.svg.axis().scale(xScale)
+            .tickFormat(function(d){
+                var prefix = d3.formatPrefix(d);                                                                        return prefix.scale(d)+prefix.symbol;
+            })
+            .orient("bottom").tickSize(-(chartHeight - chartMargin.top - chartMargin.bottom));
+            var yAxis = d3.svg.axis().scale(yScale).orient("left").tickSize(-(chartWidth - chartMargin.right - chartMargin.left));
+            
+            xAxisGroup.call(xAxis);
+            yAxisGroup.call(yAxis);
+            
+          var selection = chart.selectAll("circle")
+                .data(data, function(d) {return d.name;});
+            selection
+                .enter()
+                .append("circle")
+                .on("mouseenter", function(d, i) {
+                    highLight(d.name);
+                    d3.select("#tooltip")
+                        .style({
+                            visibility: "visible",
+                            top: (d3.event.clientY) + "px",
+                            left: (d3.event.clientX) + "px",
+                            opacity: 1
+                            })
+                        .text(d.name);
+                    })                                 
+                .on("mouseleave", function(d, i){
+                    unHighLight(d.name);
+                    d3.select("#tooltip")
+                        .style({
+                            visibility : "hidden"
+                        })
+                    })
+                .attr("fill", function(one, index){ return colorScale(one.region)});
+            
+            selection.exit().remove();
+            chart.selectAll("circle").transition()
+                .attr("transform", "translate(" + chartMargin.left + "," + chartMargin.top + ")")
+                .attr("cx", function(one, index){ return xScale(one.income[year])})
+                .attr("cy", function(one, index){ return yScale(one.lifeExpectancy[year])})
+                .attr("r", function(one, index){ return Math.sqrt(sScale(one.population[year]) / Math.PI)})
+                .attr("opacity", 0.8);
+            
+        }
+        
+        function drawList(data) {
+            var selection = list.selectAll("li").data(data, function(d) {return d.name;});
+                selection.enter()
+                .append("li")
+                .text(function(obj){return obj.name;})
+                .on("mouseenter", function(data, index){ return highLight(data.name)})
+                .on("mouseleave", function(data, index){ return unHighLight(data.name)});
+             selection.exit().remove();
+            selection.order();
+        }
+        
+        function setYear(newYear) {
+            year = newYear;
+            yearLable.text(year);
+            
+            var filteredData = rowData.filter(function(one){ return one.income[year] != undefined &&   one.lifeExpectancy[year] != undefined && one.population[year] != undefined});
+            filteredData.sort(function(a,b){ return d3.ascending(a.name, b.name)});
+            
+            drawList(filteredData);
+            drawChart(filteredData);
+        }
+        
+        function highLight(name) {
+            chart.selectAll("circle")
+                .style("stroke", function(data, index){ return data.name == name ? "black" : undefined});
+            list.selectAll("li")
+                .style("background-color", function(data, index){ return data.name == name? "black" : undefined})
+                .style("color", function(data, index){ return data.name == name ? "white" : undefined});
+        }
+        
+        function unHighLight(name) {
+            chart.selectAll("circle")
+                .style("stroke", undefined);
+            list.selectAll("li")
+                .style("background-color", undefined)
+                .style("color", undefined);
+        }
+        
+    </script>
+</html>
